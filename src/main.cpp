@@ -34,16 +34,10 @@ void main()
 	std::cout << "Running Untitled, version: " + o.str() + "." << std::endl;
 
 	/*-----------------------------------------------------------------------*/
-	/* Graphics Handler Setup			        							 */
-	/*-----------------------------------------------------------------------*/
-	Untitled::GPUHandler* gpuHandler = new Untitled::GPUHandler(SCREEN_WIDTH, SCREEN_HEIGHT, "Untitled", ENABLE_VALIDATION_LAYERS);
-	GLFWwindow* window = gpuHandler->Window();
-
-	/*-----------------------------------------------------------------------*/
 	/* Rendering Setup					        							 */
 	/*-----------------------------------------------------------------------*/
-	Untitled::Swapchain swapchain = gpuHandler->Swapchain();
-	Untitled::Renderer* renderer = new Untitled::Renderer( { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR }, gpuHandler);
+	Untitled::Renderer* renderer = new Untitled::Renderer( { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR }, SCREEN_WIDTH, SCREEN_HEIGHT, "Untitled", ENABLE_VALIDATION_LAYERS);
+	GLFWwindow* window = renderer->GetWindow();
 
 	/*-----------------------------------------------------------------------*/
 	/* Main Loop        													 */
@@ -86,6 +80,5 @@ void main()
 	/*-----------------------------------------------------------------------*/
 	std::cout << "Shutting down Untitled. Have a wonderful day!" << std::endl;
 	delete(renderer);
-	delete(gpuHandler);
 	return;
 }

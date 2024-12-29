@@ -12,8 +12,6 @@ set(BASE_SRCS
     "src/rendering/shader.cpp"
     "src/rendering/shader.h"
     "src/util/geometry.h"
-    "src/util/gpuhandler.cpp"
-    "src/util/gpuhandler.h"
     "src/main.cpp"
 )
 
