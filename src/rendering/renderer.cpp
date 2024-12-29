@@ -260,37 +260,43 @@ namespace Untitled
 		throw std::runtime_error("Failed to find suitable memory type.");
 	}
 
-	void Renderer::SetupVertexBuffer()
+	void Renderer::CreateBuffer(unsigned int size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
 	{
 		VkBufferCreateInfo bufferInfo{};
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = sizeof(Vertex) * (MAX_TRIANGLES * 3);
-		bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		bufferInfo.size = size;
+		bufferInfo.usage = usage;
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-		if (vkCreateBuffer(device, &bufferInfo, nullptr, &vertexBuffer) != VK_SUCCESS)
+		if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
 		{
-			throw std::runtime_error("Failed to create vertex buffer.");
+			throw std::runtime_error("Failed to create buffer.");
 		}
 
 		VkMemoryRequirements memRequirements;
-		vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+		vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
 
 		VkMemoryAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		allocInfo.allocationSize = memRequirements.size;
-		allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
 
-		if (vkAllocateMemory(device, &allocInfo, nullptr, &vertexBufferMemory) != VK_SUCCESS)
+		if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
 		{
-			throw std::runtime_error("failed to allocate vertex buffer memory!");
+			throw std::runtime_error("Failed to allocate buffer memory.");
 		}
 
-		vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+		vkBindBufferMemory(device, buffer, bufferMemory, 0);
+	}
+
+	void Renderer::SetupVertexBuffer()
+	{
+		unsigned int vertexBufferSize = sizeof(Vertex) * (MAX_TRIANGLES * 3);
+		CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexBuffer, vertexBufferMemory);
 
 		void* data;
 		vkMapMemory(device, vertexBufferMemory, 0, VK_WHOLE_SIZE, 0, &data);
-		memcpy(data, vertices, (size_t)bufferInfo.size);
+		memcpy(data, vertices, vertexBufferSize);
 		vkUnmapMemory(device, vertexBufferMemory);
 	}
 
@@ -519,9 +525,30 @@ namespace Untitled
 	{
 		// TEST
 		memset(vertices, 0, MAX_TRIANGLES * 3);
-		vertices[0] = { { 0.0f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f, 1.0f } };
-		vertices[1] = { { 0.5f, 0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f, 1.0f } };
-		vertices[2] = { { -0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f, 1.0f } };
+
+		unsigned int size = floor(sqrt((MAX_TRIANGLES / 2)));
+		float d = 1.0 / size;
+
+		Vec2 offset = { -1.0f + d, 1.0f + d };
+
+		for (int x = 0; x < size; x++)
+		{
+			for (int y = 0; y < size; y++)
+			{
+				int i = x + (y * size);
+				int o = i * 6;
+
+				float fx = x / (size / 2.0);
+				float fy = y / (size / 2.0);
+
+				vertices[o] =		{ { -d + fx + offset.x, d - fy + offset.y, 0.0f },	{ 1.0f, 0.0f, 0.0f, 1.0f } };
+				vertices[o + 1] =	{ { -d + fx + offset.x, -d - fy + offset.y, 0.0f},	{0.0f, 1.0f, 0.0f, 1.0f}};
+				vertices[o + 2] =	{ { d + fx + offset.x, d - fy + offset.y, 0.0f },	{ 0.0f, 0.0f, 1.0f, 1.0f } };
+				vertices[o + 3] =	{ { -d + fx + offset.x, -d - fy + offset.y, 0.0f},	{0.0f, 1.0f, 0.0f, 1.0f}};
+				vertices[o + 4] =	{ { d + fx + offset.x, -d - fy + offset.y, 0.0f },	{ 1.0f, 1.0f, 1.0f, 1.0f } };
+				vertices[o + 5] =	{ { d + fx + offset.x, d - fy + offset.y, 0.0f },	{ 0.0f, 0.0f, 1.0f, 1.0f } };
+			}
+		}
 
 		/*
 			First, a few quick assignments.

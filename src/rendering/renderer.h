@@ -17,7 +17,7 @@
 #include "../util/gpuhandler.h"
 #include "../util/geometry.h"
 
-#define MAX_TRIANGLES 10
+#define MAX_TRIANGLES 100000
 #define MAX_FRAMES_IN_FLIGHT 2
 
 namespace Untitled
@@ -97,6 +97,7 @@ namespace Untitled
 		void										SetupRenderPasses();
 		void										SetupPipeline(std::vector<VkDynamicState> dynamicStates, Shader baseShader);
 		unsigned int								FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+		void										CreateBuffer(unsigned int size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 		void										SetupVertexBuffer();
 		void										SetupCommands();
 		void										SetupSynchronization();
