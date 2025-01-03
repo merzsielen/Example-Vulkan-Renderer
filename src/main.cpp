@@ -27,13 +27,14 @@ void main()
 	/*-----------------------------------------------------------------------*/
 	std::ostringstream o;
 	o << std::setprecision(2) << std::noshowpoint << VERSION;
-	std::cout << "Running Vulkan Example Renderer, version: " + o.str() + "." << std::endl;
+	std::cout << "Running VkExample, version: " + o.str() + "." << std::endl;
 
 	/*-----------------------------------------------------------------------*/
 	/* World & Rendering Setup					        					 */
 	/*-----------------------------------------------------------------------*/
-	VKExample::Renderer* renderer = new VKExample::Renderer({ VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR },
-												SCREEN_WIDTH, SCREEN_HEIGHT, "VKExample");
+	VkExample::Camera* camera = new VkExample::Camera({ 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f, 0.0f }, 1.0f, 0.001f, 1000.0f);
+	VkExample::Renderer* renderer = new VkExample::Renderer({ VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR },
+												SCREEN_WIDTH, SCREEN_HEIGHT, "VkExample", camera);
 	GLFWwindow* window = renderer->GetWindow();
 
 	/*-----------------------------------------------------------------------*/
@@ -75,7 +76,7 @@ void main()
 	/*-----------------------------------------------------------------------*/
 	/* Shutdown         													 */
 	/*-----------------------------------------------------------------------*/
-	std::cout << "Shutting down VKExample. Have a wonderful day!" << std::endl;
+	std::cout << "Shutting down VkExample. Have a wonderful day!" << std::endl;
 
 	delete(renderer);
 }

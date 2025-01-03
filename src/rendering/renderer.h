@@ -25,13 +25,18 @@
 #include <unordered_map>
 
 #include "../util/polygons.h"
+#include "camera.h"
 #include "shader.h"
 
-#define MAX_TRIANGLES 2000000
+/*-------------------------------------------------------------------------------------------------*/
+/* Defines																						   */
+/*-------------------------------------------------------------------------------------------------*/
+
+#define MAX_TRIANGLES 1000000
 #define MAX_FRAMES_IN_FLIGHT 4
 #define ENABLE_VALIDATION_LAYERS 1
 
-namespace VKExample
+namespace VkExample
 {
 	/*---------------------------------------------------------------------------------------------*/
 	/* Helper Structs																			   */
@@ -72,6 +77,15 @@ namespace VKExample
 		std::vector<VkImageView> imageViews;
 	};
 
+	/*-----------------------------------------------------------------------*/
+	/* Uniform Buffer Object 												 */
+	/*-----------------------------------------------------------------------*/
+	struct UniformBufferObject
+	{
+		glm::mat4 mvp;
+		glm::vec2 atlasDimens;
+	};
+
 	/*---------------------------------------------------------------------------------------------*/
 	/* Renderer																					   */
 	/*---------------------------------------------------------------------------------------------*/
@@ -88,6 +102,11 @@ namespace VKExample
 		/*-------------------------------------------------------------------*/
 		GLFWwindow*						window;
 		bool							windowResized;
+
+		/*-------------------------------------------------------------------*/
+		/* Camera															 */
+		/*-------------------------------------------------------------------*/
+		Camera* camera;
 
 		/*-------------------------------------------------------------------*/
 		/* Vulkan															 */
@@ -107,6 +126,8 @@ namespace VKExample
 
 		VkRenderPass					renderPass;
 
+		VkDescriptorSetLayout			descriptorSetLayout;
+
 		VkPipeline						graphicsPipeline;
 		VkPipelineLayout				pipelineLayout;
 
@@ -116,12 +137,6 @@ namespace VKExample
 		std::vector<VkCommandBuffer>	commandBuffers;
 
 		/*-------------------------------------------------------------------*/
-		/* Viewport & Scissor												 */
-		/*-------------------------------------------------------------------*/
-		VkViewport						viewport;
-		VkRect2D						scissor;
-
-		/*-------------------------------------------------------------------*/
 		/* Buffers															 */
 		/*-------------------------------------------------------------------*/
 		VkBuffer						stagingBuffer;
@@ -129,6 +144,10 @@ namespace VKExample
 
 		VkBuffer						vertexBuffer;
 		VkDeviceMemory					vertexBufferMemory;
+
+		std::vector<VkBuffer>			uniformBuffers;
+		std::vector<VkDeviceMemory>		uniformBuffersMemory;
+		std::vector<void*>				uniformBuffersMapped;
 
 		/*-------------------------------------------------------------------*/
 		/* Synchronization Objects											 */
@@ -183,6 +202,9 @@ namespace VKExample
 		/* Render Passes Setup ----------------------------------------------*/
 		void							SetupRenderPasses();
 
+		/* Descriptor Layout Setup ------------------------------------------*/
+		void							SetupDescriptorLayout();
+
 		/* Pipeline Setup ---------------------------------------------------*/
 		void							SetupPipeline(std::vector<VkDynamicState> dynamicStates, Shader baseShader);
 
@@ -191,6 +213,7 @@ namespace VKExample
 		void							CopyBuffer(VkBuffer src, VkBuffer dst, unsigned int size);
 		void							CreateBuffer(unsigned int size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 		void							SetupVertexBuffer();
+		void							SetupUniformBuffers();
 
 		/* Commands Setup ---------------------------------------------------*/
 		void							SetupCommands();
@@ -203,11 +226,6 @@ namespace VKExample
 		/*-------------------------------------------------------------------*/
 		void							RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
-		/*-------------------------------------------------------------------*/
-		/* TEMPORARY TEMPORARY TEMPORARY TEMPORARY TEMPORARY TEMPORARY TEMPO */
-		/*-------------------------------------------------------------------*/
-		Vertex										vertices[MAX_TRIANGLES * 3];
-
 	public:
 		/*-------------------------------------------------------------------*/
 		/* Render Function													 */
@@ -217,7 +235,9 @@ namespace VKExample
 		/*-------------------------------------------------------------------*/
 		/* Buffer Functions													 */
 		/*-------------------------------------------------------------------*/
-		void							WriteBuffer(Vertex* vertices, unsigned int nVertices);
+		void							WriteVertices(Vertex* vertices, unsigned int nVertices);
+		void							WriteVertexBuffer(Vertex* vertices, unsigned int nVertices);
+		void							WriteUniformBuffer(uint32_t imageIndex);
 
 		/*-------------------------------------------------------------------*/
 		/* Window Functions													 */
@@ -228,7 +248,7 @@ namespace VKExample
 		/*-------------------------------------------------------------------*/
 		/* Constructor														 */
 		/*-------------------------------------------------------------------*/
-		Renderer(std::vector<VkDynamicState> dynamicStates, int screenWidth, int screenHeight, const char* title);
+		Renderer(std::vector<VkDynamicState> dynamicStates, int screenWidth, int screenHeight, const char* title, Camera* camera);
 
 		/*-------------------------------------------------------------------*/
 		/* Deconstructor													 */

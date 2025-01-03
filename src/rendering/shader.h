@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 
-namespace VKExample
+namespace VkExample
 {
 	/*---------------------------------------------------------------------------------------------*/
 	/* Utility Functions																		   */

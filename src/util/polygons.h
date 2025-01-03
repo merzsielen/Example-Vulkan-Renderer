@@ -14,7 +14,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 
-namespace VKExample
+namespace VkExample
 {
 	/*-----------------------------------------------------------------------*/
 	/* Vertices																 */

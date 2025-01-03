@@ -10,7 +10,7 @@
 
 #include "renderer.h"
 
-namespace VKExample
+namespace VkExample
 {
 	/*---------------------------------------------------------------------------------------------*/
 	/* Renderer																					   */
@@ -44,8 +44,8 @@ namespace VKExample
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+		vkCmdSetViewport(commandBuffer, 0, 1, &camera->GetViewport());
+		vkCmdSetScissor(commandBuffer, 0, 1, &camera->GetScissor());
 
 		VkBuffer vertexBuffers[] = { vertexBuffer };
 		VkDeviceSize offsets[] = { 0 };
@@ -86,6 +86,8 @@ namespace VKExample
 
 		vkResetCommandBuffer(commandBuffers[frame], 0);
 		RecordCommandBuffer(commandBuffers[frame], imageIndex);
+
+		WriteUniformBuffer(imageIndex);
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -137,8 +139,8 @@ namespace VKExample
 	/*-----------------------------------------------------------------------*/
 	/* Buffer Functions														 */
 	/*-----------------------------------------------------------------------*/
-	/* Write Buffer ---------------------------------------------------------*/
-	void Renderer::WriteBuffer(Vertex* vertices, unsigned int nVertices)
+	/* Write Vertex Buffer --------------------------------------------------*/
+	void Renderer::WriteVertexBuffer(Vertex* vertices, unsigned int nVertices)
 	{
 		unsigned int s = nVertices * sizeof(Vertex);
 		void* data;
@@ -148,6 +150,13 @@ namespace VKExample
 		vkUnmapMemory(device, stagingBufferMemory);
 
 		CopyBuffer(stagingBuffer, vertexBuffer, s);
+	}
+
+	/* Write Uniform Buffer -------------------------------------------------*/
+	void Renderer::WriteUniformBuffer(uint32_t imageIndex)
+	{
+		UniformBufferObject ubo = { camera->GetViewProjection(), { 0, 0 } };
+		memcpy(uniformBuffersMapped[imageIndex], &ubo, sizeof(ubo));
 	}
 
 	/*-----------------------------------------------------------------------*/
@@ -671,6 +680,29 @@ namespace VKExample
 	}
 
 	/*-----------------------------------------------------------------------*/
+	/* Descriptor Layout Setup												 */
+	/*-----------------------------------------------------------------------*/
+	void Renderer::SetupDescriptorLayout()
+	{
+		VkDescriptorSetLayoutBinding uboLayoutBinding{};
+		uboLayoutBinding.binding = 0;
+		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		uboLayoutBinding.descriptorCount = 1;
+		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		uboLayoutBinding.pImmutableSamplers = nullptr;
+
+		VkDescriptorSetLayoutCreateInfo layoutInfo{};
+		layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+		layoutInfo.bindingCount = 1;
+		layoutInfo.pBindings = &uboLayoutBinding;
+
+		if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create descriptor set layout.");
+		}
+	}
+
+	/*-----------------------------------------------------------------------*/
 	/* Pipeline Setup														 */
 	/*-----------------------------------------------------------------------*/
 	void Renderer::SetupPipeline(std::vector<VkDynamicState> dynamicStates, Shader baseShader)
@@ -718,13 +750,11 @@ namespace VKExample
 		viewportState.viewportCount = 1;
 		viewportState.scissorCount = 1;
 
-		viewport.x = 0.0f;
-		viewport.y = 0.0f;
-		viewport.width = (float)swapChain.extent.width;
-		viewport.height = (float)swapChain.extent.height;
+		camera->SetViewportWidth((float)swapChain.extent.width);
+		camera->SetViewportHeight((float)swapChain.extent.height);
 
-		scissor.offset = { 0, 0 };
-		scissor.extent = swapChain.extent;
+		camera->SetScissorOffset({ 0, 0 });
+		camera->SetScissorExtent(swapChain.extent);
 
 		/*
 			Now, we prepare our rasterizer.
@@ -780,8 +810,8 @@ namespace VKExample
 		*/
 		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pipelineLayoutInfo.setLayoutCount = 0;
-		pipelineLayoutInfo.pSetLayouts = nullptr;
+		pipelineLayoutInfo.setLayoutCount = 1;
+		pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout;
 		pipelineLayoutInfo.pushConstantRangeCount = 0;
 		pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
@@ -918,6 +948,22 @@ namespace VKExample
 		CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
 	}
 
+	/* Setup Vertex Buffer --------------------------------------------------*/
+	void Renderer::SetupUniformBuffers()
+	{
+		VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+		uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+		uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+		uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+
+		for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
+			vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+		}
+	}
+
 	/*-----------------------------------------------------------------------*/
 	/* Command Setup														 */
 	/*-----------------------------------------------------------------------*/
@@ -977,13 +1023,14 @@ namespace VKExample
 	/*-----------------------------------------------------------------------*/
 	/* Constructor															 */
 	/*-----------------------------------------------------------------------*/
-	Renderer::Renderer(std::vector<VkDynamicState> dynamicStates, int screenWidth, int screenHeight, const char* title)
+	Renderer::Renderer(std::vector<VkDynamicState> dynamicStates, int screenWidth, int screenHeight, const char* title, Camera* camera)
 	{
 		/*-----------------------------------------------*/
 		/* Preliminaries								 */
 		/*-----------------------------------------------*/
 		this->frame = 0;
 		this->windowResized = false;
+		this->camera = camera;
 
 		/*-----------------------------------------------*/
 		/* GLFW Setup									 */
@@ -1043,6 +1090,9 @@ namespace VKExample
 		/* Render Pass Setup ----------------------------*/
 		SetupRenderPasses();
 
+		/* Descriptor Layout Setup ----------------------*/
+		SetupDescriptorLayout();
+
 		/* Pipeline Setup -------------------------------*/
 		SetupPipeline(dynamicStates, baseShader);
 
@@ -1052,41 +1102,16 @@ namespace VKExample
 		/* Command Pool & Buffer Setup ------------------*/
 		SetupCommands();
 
-		/* Vertex Buffer Setup --------------------------*/
+		/* Buffer Setup ---------------------------------*/
 		SetupVertexBuffer();
+		SetupUniformBuffers();
 
 		/* Synchronization Setup ------------------------*/
 		SetupSynchronization();
 
-		/*    TEMPORARY TEMPORARY TEMPORARY TEMPORARY    */
-		memset(vertices, 0, MAX_TRIANGLES * 3);
-
-		unsigned int size = floor(sqrt((MAX_TRIANGLES / 2)));
-		float d = 1.0 / size;
-
-		glm::vec2 offset = { -1.0f + d, 1.0f + d };
-
-		for (int x = 0; x < size; x++)
-		{
-			for (int y = 0; y < size; y++)
-			{
-				int i = x + (y * size);
-				int o = i * 6;
-
-				float fx = x / (size / 2.0);
-				float fy = y / (size / 2.0);
-
-				vertices[o] = { { -d + fx + offset.x, d - fy + offset.y, 0.0f },	{ 1.0f, 0.0f, 0.0f, 1.0f } };
-				vertices[o + 1] = { { -d + fx + offset.x, -d - fy + offset.y, 0.0f},	{0.0f, 1.0f, 0.0f, 1.0f} };
-				vertices[o + 2] = { { d + fx + offset.x, d - fy + offset.y, 0.0f },	{ 0.0f, 0.0f, 1.0f, 1.0f } };
-				vertices[o + 3] = { { -d + fx + offset.x, -d - fy + offset.y, 0.0f},	{0.0f, 1.0f, 0.0f, 1.0f} };
-				vertices[o + 4] = { { d + fx + offset.x, -d - fy + offset.y, 0.0f },	{ 1.0f, 1.0f, 1.0f, 1.0f } };
-				vertices[o + 5] = { { d + fx + offset.x, d - fy + offset.y, 0.0f },	{ 0.0f, 0.0f, 1.0f, 1.0f } };
-			}
-		}
-
-		WriteBuffer(vertices, MAX_TRIANGLES * 3);
-		/*    TEMPORARY TEMPORARY TEMPORARY TEMPORARY    */
+		/* Camera Setup ---------------------------------*/
+		camera->UpdateProjection();
+		camera->UpdateView();
 	}
 
 	/*-----------------------------------------------------------------------*/
@@ -1115,8 +1140,18 @@ namespace VKExample
 		for (int i = 0; i < swapChain.imageViews.size(); i++) vkDestroyImageView(device, swapChain.imageViews[i], nullptr);
 		vkDestroySwapchainKHR(device, swapChain.base, nullptr);
 
-		/*vkDestroyBuffer(device, vertexBuffer, nullptr);
-		vkFreeMemory(device, vertexBufferMemory, nullptr);*/
+		for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			vkDestroyBuffer(device, uniformBuffers[i], nullptr);
+			vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+		}
+
+		vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+
+		vkDestroyBuffer(device, vertexBuffer, nullptr);
+		vkFreeMemory(device, vertexBufferMemory, nullptr);
+		vkDestroyBuffer(device, stagingBuffer, nullptr);
+		vkFreeMemory(device, stagingBufferMemory, nullptr);
 
 		vkDestroyDevice(device, nullptr);
 		vkDestroySurfaceKHR(instance, surface, nullptr);
