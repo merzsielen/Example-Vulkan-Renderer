@@ -4,22 +4,18 @@
 /* --  -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- */
 /*-----------------------------------------------------------------------------------------------------------------------*/
 /*-------------------------------------------------------------------------------------------------*/
-/* General																						   */
+/* Includes																						   */
 /*-------------------------------------------------------------------------------------------------*/
-/*---------------------------------------------------------------------------*/
-/* Includes																	 */
-/*---------------------------------------------------------------------------*/
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
+#include <iostream>
+
 #include "rendering/renderer.h"
 
-/*---------------------------------------------------------------------------*/
-/* Metadata																	 */
-/*---------------------------------------------------------------------------*/
+/*-------------------------------------------------------------------------------------------------*/
+/* Parameters																					   */
+/*-------------------------------------------------------------------------------------------------*/
 #define VERSION 0.01
 #define SCREEN_WIDTH 1600
 #define SCREEN_HEIGHT 800
-#define ENABLE_VALIDATION_LAYERS 1
 
 /*-------------------------------------------------------------------------------------------------*/
 /* Main																							   */
@@ -31,12 +27,13 @@ void main()
 	/*-----------------------------------------------------------------------*/
 	std::ostringstream o;
 	o << std::setprecision(2) << std::noshowpoint << VERSION;
-	std::cout << "Running Untitled, version: " + o.str() + "." << std::endl;
+	std::cout << "Running Vulkan Example Renderer, version: " + o.str() + "." << std::endl;
 
 	/*-----------------------------------------------------------------------*/
-	/* Rendering Setup					        							 */
+	/* World & Rendering Setup					        					 */
 	/*-----------------------------------------------------------------------*/
-	Untitled::Renderer* renderer = new Untitled::Renderer( { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR }, SCREEN_WIDTH, SCREEN_HEIGHT, "Untitled", ENABLE_VALIDATION_LAYERS);
+	VKExample::Renderer* renderer = new VKExample::Renderer({ VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR },
+												SCREEN_WIDTH, SCREEN_HEIGHT, "VKExample");
 	GLFWwindow* window = renderer->GetWindow();
 
 	/*-----------------------------------------------------------------------*/
@@ -78,7 +75,7 @@ void main()
 	/*-----------------------------------------------------------------------*/
 	/* Shutdown         													 */
 	/*-----------------------------------------------------------------------*/
-	std::cout << "Shutting down Untitled. Have a wonderful day!" << std::endl;
+	std::cout << "Shutting down VKExample. Have a wonderful day!" << std::endl;
+
 	delete(renderer);
-	return;
 }

@@ -24,39 +24,21 @@
 #include <algorithm>
 #include <unordered_map>
 
+#include "../util/polygons.h"
 #include "shader.h"
-#include "../util/geometry.h"
 
 #define MAX_TRIANGLES 2000000
 #define MAX_FRAMES_IN_FLIGHT 4
+#define ENABLE_VALIDATION_LAYERS 1
 
-namespace Untitled
+namespace VKExample
 {
-	/*-------------------------------------------------------------------------------------------------*/
-	/* Vulkan Setup																					   */
-	/*-------------------------------------------------------------------------------------------------*/
-	/*---------------------------------------------------------------------------*/
-	/* Extensions & Validation Layer Functions									 */
-	/*---------------------------------------------------------------------------*/
-	/* Check Validation Layer Support -------------------------------------------*/
-	/*
-		This function serves to check if the validation layers we are requesting
-		are available. This is more important in the debug phase and should be
-		disabled (by setting ENABLE_VALIDATION_LAYERS to 0) for release.
-	*/
-	bool CheckValidationLayerSupport(std::vector<const char*> validationLayers);
-
-	/* Get Required Extensions --------------------------------------------------*/
-	/*
-		This function just gets the extensions from Vulkan which are required
-		for GLFW (and anything else we might add later.
-	*/
-	std::vector<const char*> GetRequiredExtensions(bool enableValidationLayers);
-
-	/*---------------------------------------------------------------------------*/
-	/* Queue Family																 */
-	/*---------------------------------------------------------------------------*/
-	/* Queue Family Indices -----------------------------------------------------*/
+	/*---------------------------------------------------------------------------------------------*/
+	/* Helper Structs																			   */
+	/*---------------------------------------------------------------------------------------------*/
+	/*-----------------------------------------------------------------------*/
+	/* Queue Family Indices													 */
+	/*-----------------------------------------------------------------------*/
 	/*
 		Queue family indices tell us about the queue families of a particular
 		physical device.
@@ -68,21 +50,9 @@ namespace Untitled
 		bool IsComplete() { return graphicsFamily.has_value() && presentFamily.has_value(); }
 	};
 
-	/* Find Queue Families ------------------------------------------------------*/
-	/*
-		Find Queue Families returns the queue family indices of a physical
-		device.
-	*/
-	QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface);
-
-	/*---------------------------------------------------------------------------*/
-	/* Swap Chain Support														 */
-	/*---------------------------------------------------------------------------*/
-	/* Swap Chain Support Details -----------------------------------------------*/
-	/*
-		SCSD gives us data about the swap chain capabilities of a particular
-		device.
-	*/
+	/*-----------------------------------------------------------------------*/
+	/* Swap Chain Support Details											 */
+	/*-----------------------------------------------------------------------*/
 	struct SwapChainSupportDetails
 	{
 		VkSurfaceCapabilitiesKHR capabilities;
@@ -90,76 +60,10 @@ namespace Untitled
 		std::vector<VkPresentModeKHR> presentModes;
 	};
 
-	/* Get Swap Chain Support Details -------------------------------------------*/
-	/*
-		This returns to SCSDs of a particular device.
-	*/
-	SwapChainSupportDetails GetSwapChainSupportDetails(VkPhysicalDevice device, VkSurfaceKHR surface);
-
-	/*---------------------------------------------------------------------------*/
-	/* Surface Functions														 */
-	/*---------------------------------------------------------------------------*/
-	/* Create Surface -----------------------------------------------------------*/
-	/*
-		We have to create a surface for our window.
-	*/
-	VkSurfaceKHR CreateSurface(VkInstance instance, GLFWwindow* window);
-
-	/*---------------------------------------------------------------------------*/
-	/* Physical Device Functions												 */
-	/*---------------------------------------------------------------------------*/
-	/* Check Device Extension Support -------------------------------------------*/
-	/*
-		This just checks that a given device has all the required extensions.
-	*/
-	bool CheckDeviceExtensionSupport(VkPhysicalDevice device, std::vector<const char*> requiredExtensions);
-
-	/* Check Device Suitability -------------------------------------------------*/
-	/*
-		We need to check if a particular device is suitable for our purposes.
-	*/
-	bool CheckPhysicalDeviceSuitability(VkPhysicalDevice device, VkSurfaceKHR surface, std::vector<const char*> requiredExtensions);
-
-	/* Rate Physical Device -----------------------------------------------------*/
-	/*
-		For now, we just get the best device we can. Perhaps in the future we
-		should change this.
-	*/
-	int RatePhysicalDevice(VkPhysicalDevice device);
-
-	/* Get Physical Device ------------------------------------------------------*/
-	/*
-		We need to find the proper physical device that supports Vulkan.
-	*/
-	VkPhysicalDevice GetPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, std::vector<const char*> requiredExtensions);
-
-	/*---------------------------------------------------------------------------*/
-	/* Logical Device Functions													 */
-	/*---------------------------------------------------------------------------*/
-	/* Create Logical Device ----------------------------------------------------*/
-	/*
-		In order to use our physical device we must create a corresponding
-		logical device.
-	*/
-	VkDevice CreateLogicalDevice(VkPhysicalDevice device, QueueFamilyIndices indices, std::vector<const char*> validationLayers, std::vector<const char*> requiredExtensions, bool enableValidationLayers);
-
-	/* Get Device Graphics Queue ---------------------------------------------------------*/
-	/*
-		Returns the graphics queue of the input device.
-	*/
-	VkQueue GetDeviceGraphicsQueue(VkDevice device, QueueFamilyIndices indices);
-
-	/* Get Device Present Queue ---------------------------------------------------------*/
-	/*
-		Returns the present queue of the input device.
-	*/
-	VkQueue GetDevicePresentQueue(VkDevice device, QueueFamilyIndices indices);
-
-	/*---------------------------------------------------------------------------*/
-	/* Swap Chain 																 */
-	/*---------------------------------------------------------------------------*/
-	/* Swapchain ----------------------------------------------------------------*/
-	struct Swapchain
+	/*-----------------------------------------------------------------------*/
+	/* Swap Chain 															 */
+	/*-----------------------------------------------------------------------*/
+	struct SwapChain
 	{
 		VkSwapchainKHR base;
 		std::vector<VkImage> images;
@@ -167,18 +71,6 @@ namespace Untitled
 		VkExtent2D extent;
 		std::vector<VkImageView> imageViews;
 	};
-
-	/* Choose Swap Surface Format -----------------------------------------------*/
-	VkSurfaceFormatKHR ChooseSwapSurfaceFormat(std::vector<VkSurfaceFormatKHR>& availableFormats);
-
-	/* Choose Swap Present Mode -------------------------------------------------*/
-	VkPresentModeKHR ChooseSwapPresentMode(std::vector<VkPresentModeKHR>& availableModes);
-
-	/* Choose Swap Extent -------------------------------------------------------*/
-	VkExtent2D ChooseSwapExtent(VkSurfaceCapabilitiesKHR& capabilities, GLFWwindow* window);
-
-	/* Create Swap Chain --------------------------------------------------------*/
-	Swapchain CreateSwapChain(VkPhysicalDevice physicalDevice, VkDevice logicalDevice, VkSurfaceKHR surface, GLFWwindow* window);
 
 	/*---------------------------------------------------------------------------------------------*/
 	/* Renderer																					   */
@@ -189,114 +81,154 @@ namespace Untitled
 		/*-------------------------------------------------------------------*/
 		/* Frame															 */
 		/*-------------------------------------------------------------------*/
-		unsigned int								frame;
-
-		/*---------------------------------------------------------------------------*/
-		/* GLFW																		 */
-		/*---------------------------------------------------------------------------*/
-		GLFWwindow*									window;
-		bool										framebufferResized;
-
-		/*---------------------------------------------------------------------------*/
-		/* Vulkan																	 */
-		/*---------------------------------------------------------------------------*/
-		VkInstance									instance;
-		VkSurfaceKHR								surface;
-
-		VkPhysicalDevice							physicalDevice;
-		VkDevice									logicalDevice;
-
-		Swapchain									swapchain;
-
-		VkQueue										graphicsQueue;
-		VkQueue										presentQueue;
+		unsigned int					frame;
 
 		/*-------------------------------------------------------------------*/
-		/* Buffers															 */
+		/* GLFW																 */
 		/*-------------------------------------------------------------------*/
-		VkBuffer									vertexBuffer;
-		VkDeviceMemory								vertexBufferMemory;
-		Vertex										vertices[MAX_TRIANGLES * 3];
+		GLFWwindow*						window;
+		bool							windowResized;
 
 		/*-------------------------------------------------------------------*/
-		/* Shader															 */
+		/* Vulkan															 */
 		/*-------------------------------------------------------------------*/
-		std::unordered_map<std::string, Shader>		shaders;
+		VkInstance						instance;
+		VkSurfaceKHR					surface;
+
+		VkPhysicalDevice				physicalDevice;
+		VkDevice						device;
+
+		QueueFamilyIndices				indices;
+
+		SwapChain						swapChain;
+
+		VkQueue							graphicsQueue;
+		VkQueue							presentQueue;
+
+		VkRenderPass					renderPass;
+
+		VkPipeline						graphicsPipeline;
+		VkPipelineLayout				pipelineLayout;
+
+		std::vector<VkFramebuffer>		framebuffers;
+
+		VkCommandPool					commandPool;
+		std::vector<VkCommandBuffer>	commandBuffers;
 
 		/*-------------------------------------------------------------------*/
 		/* Viewport & Scissor												 */
 		/*-------------------------------------------------------------------*/
-		VkViewport									viewport;
-		VkRect2D									scissor;
+		VkViewport						viewport;
+		VkRect2D						scissor;
 
 		/*-------------------------------------------------------------------*/
-		/* Render Pass														 */
+		/* Buffers															 */
 		/*-------------------------------------------------------------------*/
-		VkRenderPass								renderPass;
+		VkBuffer						stagingBuffer;
+		VkDeviceMemory					stagingBufferMemory;
 
-		/*-------------------------------------------------------------------*/
-		/* Pipeline															 */
-		/*-------------------------------------------------------------------*/
-		VkPipeline									graphicsPipeline;
-		VkPipelineLayout							pipelineLayout;
-
-		/*-------------------------------------------------------------------*/
-		/* Frame Buffers													 */
-		/*-------------------------------------------------------------------*/
-		std::vector<VkFramebuffer>					framebuffers;
-
-		/*-------------------------------------------------------------------*/
-		/* Command Pool & Buffer											 */
-		/*-------------------------------------------------------------------*/
-		VkCommandPool								commandPool;
-		std::vector<VkCommandBuffer>				commandBuffers;
+		VkBuffer						vertexBuffer;
+		VkDeviceMemory					vertexBufferMemory;
 
 		/*-------------------------------------------------------------------*/
 		/* Synchronization Objects											 */
 		/*-------------------------------------------------------------------*/
-		std::vector<VkSemaphore>					imagesAvailable;
-		std::vector<VkSemaphore>					rendersFinished;
-		std::vector<VkFence>						inFlights;
+		std::vector<VkSemaphore>		imagesAvailable;
+		std::vector<VkSemaphore>		rendersFinished;
+		std::vector<VkFence>			inFlights;
 
 		/*-------------------------------------------------------------------*/
-		/* Setup Functions													 */
+		/* Shaders															 */
 		/*-------------------------------------------------------------------*/
-		void										SetupFramebuffers();
-		void										SetupRenderPasses();
-		void										SetupPipeline(std::vector<VkDynamicState> dynamicStates, Shader baseShader);
-		unsigned int								FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
-		void										CopyBuffer(VkBuffer src, VkBuffer dst, unsigned int size);
-		void										CreateBuffer(unsigned int size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
-		void										SetupVertexBuffer();
-		void										SetupCommands();
-		void										SetupSynchronization();
+		std::unordered_map<std::string, Shader>	shaders;
 
-	public:
 		/*-------------------------------------------------------------------*/
-		/* Render Functions													 */
+		/* Vulkan Setup Functions											 */
 		/*-------------------------------------------------------------------*/
-		void										Render();
+		/* Validation Layers ------------------------------------------------*/
+		bool							CheckValidationLayerSupport(std::vector<const char*> validationLayers);
+
+		/* Instance Setup ---------------------------------------------------*/
+		std::vector<const char*>		GetRequiredExtensions();
+		void							CreateInstance(	std::string name,
+														std::vector<const char*> validationLayers,
+														std::vector<const char*> instanceExtensions);
+
+		/* Surface Setup ----------------------------------------------------*/
+		void							CreateSurface();
+
+		/* Device Setup -----------------------------------------------------*/
+		QueueFamilyIndices				FindQueueFamilies(VkPhysicalDevice potentiate);
+		SwapChainSupportDetails			GetSwapChainSupportDetails(VkPhysicalDevice potentiate);
+		bool							CheckDeviceExtensionSupport(VkPhysicalDevice potentiate,
+																	std::vector<const char*> deviceExtensions);
+		bool							CheckPhysicalDeviceSuitability(	VkPhysicalDevice potentiate,
+																		std::vector<const char*> deviceExtensions);
+		int								RatePhysicalDevice(VkPhysicalDevice potentiate);
+		void							GetPhysicalDevice(std::vector<const char*> deviceExtensions);
+		void							CreateDevice(	std::vector<const char*> validationLayers,
+														std::vector<const char*> deviceExtensions);
+		void							GetGraphicsQueue();
+		void							GetPresentQueue();
+
+		/* SwapChain Setup --------------------------------------------------*/
+		VkSurfaceFormatKHR				ChooseSwapSurfaceFormat(std::vector<VkSurfaceFormatKHR>& availableFormats);
+		VkPresentModeKHR				ChooseSwapPresentMode(std::vector<VkPresentModeKHR>& availableModes);
+		VkExtent2D						ChooseSwapExtent(VkSurfaceCapabilitiesKHR& capabilities);
+		void							CreateSwapChain();
+
+		/* Framebuffers Setup -----------------------------------------------*/
+		void							SetupFramebuffers();
+
+		/* Render Passes Setup ----------------------------------------------*/
+		void							SetupRenderPasses();
+
+		/* Pipeline Setup ---------------------------------------------------*/
+		void							SetupPipeline(std::vector<VkDynamicState> dynamicStates, Shader baseShader);
+
+		/* Buffer Setup -----------------------------------------------------*/
+		unsigned int					FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+		void							CopyBuffer(VkBuffer src, VkBuffer dst, unsigned int size);
+		void							CreateBuffer(unsigned int size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+		void							SetupVertexBuffer();
+
+		/* Commands Setup ---------------------------------------------------*/
+		void							SetupCommands();
+
+		/* Synchronization Setup --------------------------------------------*/
+		void							SetupSynchronization();
 
 		/*-------------------------------------------------------------------*/
 		/* Command Functions												 */
 		/*-------------------------------------------------------------------*/
-		void										RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+		void							RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
 		/*-------------------------------------------------------------------*/
-		/* Repair Swapchain													 */
+		/* TEMPORARY TEMPORARY TEMPORARY TEMPORARY TEMPORARY TEMPORARY TEMPO */
 		/*-------------------------------------------------------------------*/
-		void										ResizeFramebuffer(bool t) { framebufferResized = t; }
-		void										RepairSwapchain();
+		Vertex										vertices[MAX_TRIANGLES * 3];
+
+	public:
+		/*-------------------------------------------------------------------*/
+		/* Render Function													 */
+		/*-------------------------------------------------------------------*/
+		void							Render();
 
 		/*-------------------------------------------------------------------*/
-		/* Gets																 */
+		/* Buffer Functions													 */
 		/*-------------------------------------------------------------------*/
-		GLFWwindow*									GetWindow() { return window; }
+		void							WriteBuffer(Vertex* vertices, unsigned int nVertices);
+
+		/*-------------------------------------------------------------------*/
+		/* Window Functions													 */
+		/*-------------------------------------------------------------------*/
+		void							SetWindowResized(bool v) { windowResized = v; }
+		GLFWwindow*						GetWindow() { return window; }
 
 		/*-------------------------------------------------------------------*/
 		/* Constructor														 */
 		/*-------------------------------------------------------------------*/
-		Renderer(std::vector<VkDynamicState> dynamicStates, int screenWidth, int screenHeight, const char* title, bool enableValidationLayers);
+		Renderer(std::vector<VkDynamicState> dynamicStates, int screenWidth, int screenHeight, const char* title);
 
 		/*-------------------------------------------------------------------*/
 		/* Deconstructor													 */
@@ -304,16 +236,16 @@ namespace Untitled
 		~Renderer();
 	};
 
-	/*-------------------------------------------------------------------------------------------------*/
-	/* GLFW Setup																					   */
-	/*-------------------------------------------------------------------------------------------------*/
-	/*---------------------------------------------------------------------------*/
-	/* Resize Callback															 */
-	/*---------------------------------------------------------------------------*/
+	/*-----------------------------------------------------------------------*/
+	/* GLFW Setup															 */
+	/*-----------------------------------------------------------------------*/
+	/*---------------------------------------------------*/
+	/* Resize Callback									 */
+	/*---------------------------------------------------*/
 	static void ResizeCallback(GLFWwindow* window, int width, int height)
 	{
 		Renderer* r = reinterpret_cast<Renderer*>(glfwGetWindowUserPointer(window));
-		r->ResizeFramebuffer(true);
+		r->SetWindowResized(true);
 	}
 }
 

@@ -11,7 +11,7 @@ set(BASE_SRCS
     "src/rendering/renderer.h"
     "src/rendering/shader.cpp"
     "src/rendering/shader.h"
-    "src/util/geometry.h"
+    "src/util/polygons.h"
     "src/main.cpp"
 )
 
